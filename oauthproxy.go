@@ -635,7 +635,7 @@ func (p *OAuthProxy) OAuthCallback(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	session, err := p.redeemCode(req.Host, req.Form.Get("code"))
+	session, err := p.redeemCode(req.Host, req.Form.Get("token"))
 	if err != nil {
 		log.Printf("%s error redeeming code %s", remoteAddr, err)
 		p.ErrorPage(rw, 500, "Internal Error", "Internal Error")

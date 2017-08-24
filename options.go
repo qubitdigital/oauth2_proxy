@@ -68,6 +68,7 @@ type Options struct {
 	ProfileURL        string `flag:"profile-url" cfg:"profile_url"`
 	ProtectedResource string `flag:"resource" cfg:"resource"`
 	ValidateURL       string `flag:"validate-url" cfg:"validate_url"`
+	JWTKeysURL        string `flag:"jwt-keys-url" cfg:"jwt_keys_url"`
 	Scope             string `flag:"scope" cfg:"scope"`
 	ApprovalPrompt    string `flag:"approval-prompt" cfg:"approval_prompt"`
 
@@ -236,6 +237,7 @@ func parseProviderInfo(o *Options, msgs []string) []string {
 	p.ProfileURL, msgs = parseURL(o.ProfileURL, "profile", msgs)
 	p.ValidateURL, msgs = parseURL(o.ValidateURL, "validate", msgs)
 	p.ProtectedResource, msgs = parseURL(o.ProtectedResource, "resource", msgs)
+	p.JWTKeysURL, msgs = parseURL(o.JWTKeysURL, "jwtKeys", msgs)
 
 	o.provider = providers.New(o.Provider, p)
 	switch p := o.provider.(type) {
