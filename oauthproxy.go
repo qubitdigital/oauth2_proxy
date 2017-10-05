@@ -17,7 +17,96 @@ import (
 	"github.com/18F/hmacauth"
 	"github.com/bitly/oauth2_proxy/cookie"
 	"github.com/bitly/oauth2_proxy/providers"
+	"github.com/opentracing-contrib/go-stdlib/nethttp"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var (
+	proxyVec     *prometheus.HistogramVec
+	robotsVec    *prometheus.HistogramVec
+	pingVec      *prometheus.HistogramVec
+	whitelistVec *prometheus.HistogramVec
+	signInVec    *prometheus.HistogramVec
+	signOutVec   *prometheus.HistogramVec
+	startVec     *prometheus.HistogramVec
+	callbackVec  *prometheus.HistogramVec
+	authOnlyVec  *prometheus.HistogramVec
+)
+
+func init() {
+	histogramOpts := prometheus.HistogramOpts{
+		Name:        "http_request_duration_seconds",
+		Help:        "A histogram of latencies for requests.",
+		Buckets:     []float64{.25, .5, 1, 2.5, 5, 10},
+		ConstLabels: prometheus.Labels{"handler": "proxy"},
+	}
+	proxyVec = prometheus.NewHistogramVec(
+		histogramOpts,
+		[]string{"code"},
+	)
+
+	histogramOpts.ConstLabels = prometheus.Labels{"handler": "robots"}
+	robotsVec = prometheus.NewHistogramVec(
+		histogramOpts,
+		[]string{"code"},
+	)
+
+	histogramOpts.ConstLabels = prometheus.Labels{"handler": "ping"}
+	pingVec = prometheus.NewHistogramVec(
+		histogramOpts,
+		[]string{"code"},
+	)
+
+	histogramOpts.ConstLabels = prometheus.Labels{"handler": "whitelist"}
+	whitelistVec = prometheus.NewHistogramVec(
+		histogramOpts,
+		[]string{"code"},
+	)
+
+	histogramOpts.ConstLabels = prometheus.Labels{"handler": "signIn"}
+	signInVec = prometheus.NewHistogramVec(
+		histogramOpts,
+		[]string{"code"},
+	)
+
+	histogramOpts.ConstLabels = prometheus.Labels{"handler": "signOut"}
+	signOutVec = prometheus.NewHistogramVec(
+		histogramOpts,
+		[]string{"code"},
+	)
+
+	histogramOpts.ConstLabels = prometheus.Labels{"handler": "start"}
+	startVec = prometheus.NewHistogramVec(
+		histogramOpts,
+		[]string{"code"},
+	)
+
+	histogramOpts.ConstLabels = prometheus.Labels{"handler": "callback"}
+	callbackVec = prometheus.NewHistogramVec(
+		histogramOpts,
+		[]string{"code"},
+	)
+
+	histogramOpts.ConstLabels = prometheus.Labels{"handler": "authOnly"}
+	authOnlyVec = prometheus.NewHistogramVec(
+		histogramOpts,
+		[]string{"code"},
+	)
+
+	prometheus.MustRegister(
+		proxyVec,
+		robotsVec,
+		pingVec,
+		whitelistVec,
+		signInVec,
+		signOutVec,
+		startVec,
+		callbackVec,
+		authOnlyVec,
+	)
+}
 
 const SignatureHeader = "GAP-Signature"
 
@@ -46,6 +135,7 @@ type OAuthProxy struct {
 	Validator      func(string) bool
 
 	RobotsPath        string
+	MetricsPath       string
 	PingPath          string
 	SignInPath        string
 	SignOutPath       string
@@ -89,9 +179,21 @@ func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	u.handler.ServeHTTP(w, r)
 }
 
-func NewReverseProxy(target *url.URL) (proxy *httputil.ReverseProxy) {
-	return httputil.NewSingleHostReverseProxy(target)
+type traceTransport struct{ next http.RoundTripper }
+
+func (t traceTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	nt := &nethttp.Transport{t.next}
+	r, ht := nethttp.TraceRequest(opentracing.GlobalTracer(), r)
+	defer ht.Finish()
+	return nt.RoundTrip(r)
 }
+
+func NewReverseProxy(target *url.URL) (proxy *httputil.ReverseProxy) {
+	rp := httputil.NewSingleHostReverseProxy(target)
+	rp.Transport = &traceTransport{rp.Transport}
+	return rp
+}
+
 func setProxyUpstreamHostHeader(proxy *httputil.ReverseProxy, target *url.URL) {
 	director := proxy.Director
 	proxy.Director = func(req *http.Request) {
@@ -188,6 +290,7 @@ func NewOAuthProxy(opts *Options, validator func(string) bool) *OAuthProxy {
 
 		RobotsPath:        "/robots.txt",
 		PingPath:          "/ping",
+		MetricsPath:       fmt.Sprintf("%s/metrics", opts.ProxyPrefix),
 		SignInPath:        fmt.Sprintf("%s/sign_in", opts.ProxyPrefix),
 		SignOutPath:       fmt.Sprintf("%s/sign_out", opts.ProxyPrefix),
 		OAuthStartPath:    fmt.Sprintf("%s/start", opts.ProxyPrefix),
@@ -446,26 +549,36 @@ func getRemoteAddr(req *http.Request) (s string) {
 	return
 }
 
+func instrument(next http.HandlerFunc, dvec *prometheus.HistogramVec, spanName string) http.Handler {
+	return promhttp.InstrumentHandlerDuration(dvec, next)
+}
+
 func (p *OAuthProxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	switch path := req.URL.Path; {
 	case path == p.RobotsPath:
-		p.RobotsTxt(rw)
+		instrument(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			p.RobotsTxt(rw)
+		}), robotsVec, "robots").ServeHTTP(rw, req)
+	case path == p.MetricsPath:
+		promhttp.Handler().ServeHTTP(rw, req)
 	case path == p.PingPath:
-		p.PingPage(rw)
+		instrument(func(rw http.ResponseWriter, req *http.Request) {
+			p.PingPage(rw)
+		}, pingVec, "ping").ServeHTTP(rw, req)
 	case p.IsWhitelistedRequest(req):
-		p.serveMux.ServeHTTP(rw, req)
+		instrument(p.serveMux.ServeHTTP, whitelistVec, "whitelist").ServeHTTP(rw, req)
 	case path == p.SignInPath:
-		p.SignIn(rw, req)
+		instrument(p.SignIn, signInVec, "signIn").ServeHTTP(rw, req)
 	case path == p.SignOutPath:
-		p.SignOut(rw, req)
+		instrument(p.SignOut, signOutVec, "signOut").ServeHTTP(rw, req)
 	case path == p.OAuthStartPath:
-		p.OAuthStart(rw, req)
+		instrument(p.OAuthStart, startVec, "start").ServeHTTP(rw, req)
 	case path == p.OAuthCallbackPath:
-		p.OAuthCallback(rw, req)
+		instrument(p.OAuthCallback, callbackVec, "callback").ServeHTTP(rw, req)
 	case path == p.AuthOnlyPath:
-		p.AuthenticateOnly(rw, req)
+		instrument(p.AuthenticateOnly, authOnlyVec, "authOnly").ServeHTTP(rw, req)
 	default:
-		p.Proxy(rw, req)
+		instrument(p.Proxy, proxyVec, "proxy").ServeHTTP(rw, req)
 	}
 }
 

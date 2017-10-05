@@ -28,3 +28,4 @@ dist
 
 # Editor swap/temp files
 .*.swp
+vendor

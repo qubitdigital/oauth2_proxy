@@ -11,9 +11,28 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/mreiferson/go-options"
+	"github.com/opentracing-contrib/go-stdlib/nethttp"
+	opentracing "github.com/opentracing/opentracing-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
+	jaegerlog "github.com/uber/jaeger-client-go/log"
+	"github.com/uber/jaeger-lib/metrics"
 )
 
 func main() {
+	jcfg := jaegercfg.Configuration{}
+	jLogger := jaegerlog.StdLogger
+	jMetricsFactory := metrics.NullFactory
+	closer, err := jcfg.InitGlobalTracer(
+		"oauth2_proxy",
+		jaegercfg.Logger(jLogger),
+		jaegercfg.Metrics(jMetricsFactory),
+	)
+	if err != nil {
+		log.Printf("Could not initialize jaeger tracer: %s", err.Error())
+		return
+	}
+	defer closer.Close()
+
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	flagSet := flag.NewFlagSet("oauth2_proxy", flag.ExitOnError)
 
@@ -98,7 +117,7 @@ func main() {
 	cfg.LoadEnvForStruct(opts)
 	options.Resolve(opts, flagSet, cfg)
 
-	err := opts.Validate()
+	err = opts.Validate()
 	if err != nil {
 		log.Printf("%s", err)
 		os.Exit(1)
@@ -124,8 +143,11 @@ func main() {
 	}
 
 	s := &Server{
-		Handler: LoggingHandler(os.Stdout, oauthproxy, opts.RequestLogging),
-		Opts:    opts,
+		Handler: nethttp.Middleware(
+			opentracing.GlobalTracer(),
+			LoggingHandler(os.Stdout, oauthproxy, opts.RequestLogging),
+		),
+		Opts: opts,
 	}
 	s.ListenAndServe()
 }
