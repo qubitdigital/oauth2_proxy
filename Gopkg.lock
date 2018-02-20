@@ -117,7 +117,10 @@
 
 [[projects]]
   name = "github.com/mattes/migrate"
-  packages = ["driver/mysql","migrate"]
+  packages = [
+    "driver/mysql",
+    "migrate"
+  ]
   revision = "afc973c4e5a6b746217c2d3950fcd110ed1ba349"
   version = "v1.3.2"
 
@@ -141,7 +144,11 @@
 
 [[projects]]
   name = "github.com/opentracing/opentracing-go"
-  packages = [".","ext","log"]
+  packages = [
+    ".",
+    "ext",
+    "log"
+  ]
   revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
   version = "v1.0.2"
 
@@ -152,10 +159,13 @@
   version = "v0.8.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/prometheus/client_golang"
-  packages = ["prometheus","prometheus/promhttp"]
-  revision = "353b8c3f3776541879f9abfd8fa8b1ae162ab394"
+  packages = [
+    "prometheus",
+    "prometheus/promhttp"
+  ]
+  revision = "967789050ba94deca04a5e84cce8ad472ce313c1"
+  version = "v0.9.0-pre1"
 
 [[projects]]
   branch = "master"
@@ -166,13 +176,20 @@
 [[projects]]
   branch = "master"
   name = "github.com/prometheus/common"
-  packages = ["expfmt","internal/bitbucket.org/ww/goautoneg","model"]
+  packages = [
+    "expfmt",
+    "internal/bitbucket.org/ww/goautoneg",
+    "model"
+  ]
   revision = "2f17f4a9d485bf34b4bfaccc273805040e4f86c8"
 
 [[projects]]
   branch = "master"
   name = "github.com/prometheus/procfs"
-  packages = [".","xfs"]
+  packages = [
+    ".",
+    "xfs"
+  ]
   revision = "e645f4e5aaa8506fc71d6edbc5c4ff02c04c46f2"
 
 [[projects]]
@@ -183,7 +200,12 @@
 
 [[projects]]
   name = "github.com/qubitdigital/baton-api"
-  packages = ["authz","client","config","mysql"]
+  packages = [
+    "authz",
+    "client",
+    "config",
+    "mysql"
+  ]
   revision = "d8e70d688d2d3e9a13143c7f0eb60953026e1c1a"
   version = "v2.0.0"
 
@@ -195,7 +217,18 @@
 
 [[projects]]
   name = "github.com/uber/jaeger-client-go"
-  packages = [".","config","internal/spanlog","log","rpcmetrics","thrift-gen/agent","thrift-gen/jaeger","thrift-gen/sampling","thrift-gen/zipkincore","utils"]
+  packages = [
+    ".",
+    "config",
+    "internal/spanlog",
+    "log",
+    "rpcmetrics",
+    "thrift-gen/agent",
+    "thrift-gen/jaeger",
+    "thrift-gen/sampling",
+    "thrift-gen/zipkincore",
+    "utils"
+  ]
   revision = "3e3870040def0ebdaf65a003863fa64f5cb26139"
   version = "v2.9.0"
 
@@ -208,19 +241,31 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
-  packages = ["pbkdf2","scrypt"]
+  packages = [
+    "pbkdf2",
+    "scrypt"
+  ]
   revision = "9419663f5a44be8b34ca85f08abc5fe1be11f8a3"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["context","context/ctxhttp"]
+  packages = [
+    "context",
+    "context/ctxhttp"
+  ]
   revision = "a04bdaca5b32abe1c069418fb7088ae607de5bd0"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/oauth2"
-  packages = [".","google","internal","jws","jwt"]
+  packages = [
+    ".",
+    "google",
+    "internal",
+    "jws",
+    "jwt"
+  ]
   revision = "bb50c06baba3d0c76f9d125c0719093e315b5b44"
 
 [[projects]]
@@ -232,12 +277,28 @@
 [[projects]]
   branch = "master"
   name = "google.golang.org/api"
-  packages = ["admin/directory/v1","gensupport","googleapi","googleapi/internal/uritemplates"]
+  packages = [
+    "admin/directory/v1",
+    "gensupport",
+    "googleapi",
+    "googleapi/internal/uritemplates"
+  ]
   revision = "7a7376eff6a51c6a053fcf8e9e50bf01a20f2673"
 
 [[projects]]
   name = "google.golang.org/appengine"
-  packages = [".","internal","internal/app_identity","internal/base","internal/datastore","internal/log","internal/modules","internal/remote_api","internal/urlfetch","urlfetch"]
+  packages = [
+    ".",
+    "internal",
+    "internal/app_identity",
+    "internal/base",
+    "internal/datastore",
+    "internal/log",
+    "internal/modules",
+    "internal/remote_api",
+    "internal/urlfetch",
+    "urlfetch"
+  ]
   revision = "150dc57a1b433e64154302bdc40b6bb8aefa313a"
   version = "v1.0.0"
 
@@ -249,7 +310,12 @@
 
 [[projects]]
   name = "gopkg.in/mattes/migrate.v1"
-  packages = ["driver","file","migrate/direction","pipe"]
+  packages = [
+    "driver",
+    "file",
+    "migrate/direction",
+    "pipe"
+  ]
   revision = "afc973c4e5a6b746217c2d3950fcd110ed1ba349"
   version = "v1.3.2"
 
@@ -262,6 +328,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8781fc9b1f46b8b91a221c0866142399f2f88dd644e2749f1a025e41eefc3c18"
+  inputs-digest = "5bae35c1914f6367229c46ce0b824aef964e2ac4d039d899c85e4462354bf16e"
   solver-name = "gps-cdcl"
   solver-version = 1
