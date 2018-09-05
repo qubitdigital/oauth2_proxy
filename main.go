@@ -1,4 +1,4 @@
-package main
+package main // import "github.com/bitly/oauth2_proxy"
 
 import (
 	"flag"
