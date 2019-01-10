@@ -16,6 +16,7 @@ require (
 	github.com/go-sql-driver/mysql v1.3.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v0.0.0-20170920220647-130e6b02ab05
+	github.com/gorilla/websocket v1.4.0
 	github.com/huandu/xstrings v0.0.0-20170908061042-d6590c0c31d1
 	github.com/imdario/mergo v0.0.0-20160216103600-3e95a51e0639
 	github.com/kr/pretty v0.0.0-20160823170715-cfb55aafdaf3
