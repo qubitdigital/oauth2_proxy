@@ -1,5 +1,7 @@
 module github.com/bitly/oauth2_proxy
 
+go 1.14
+
 require (
 	cloud.google.com/go v0.15.0 // indirect
 	github.com/18F/hmacauth v0.0.0-20151013130326-9232a6386b73

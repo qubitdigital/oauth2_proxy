@@ -15,7 +15,7 @@ type Server struct {
 }
 
 func (s *Server) ListenAndServe() {
-	if s.Opts.TLSKeyFile != "" || s.Opts.TLSCertFile != "" {
+	if len(s.Opts.TLSCertFile) != 0 {
 		s.ServeHTTPS()
 	} else {
 		s.ServeHTTP()
@@ -67,11 +67,17 @@ func (s *Server) ServeHTTPS() {
 		config.NextProtos = []string{"http/1.1"}
 	}
 
+	if len(s.Opts.TLSCertFile) != len(s.Opts.TLSKeyFile) {
+		log.Fatalf("FATAL: there should be an equal number of certs and matching keys")
+	}
+
 	var err error
-	config.Certificates = make([]tls.Certificate, 1)
-	config.Certificates[0], err = tls.LoadX509KeyPair(s.Opts.TLSCertFile, s.Opts.TLSKeyFile)
-	if err != nil {
-		log.Fatalf("FATAL: loading tls config (%s, %s) failed - %s", s.Opts.TLSCertFile, s.Opts.TLSKeyFile, err)
+	config.Certificates = make([]tls.Certificate, len(s.Opts.TLSCertFile))
+	for i := range config.Certificates {
+		config.Certificates[i], err = tls.LoadX509KeyPair(s.Opts.TLSCertFile[i], s.Opts.TLSKeyFile[i])
+		if err != nil {
+			log.Fatalf("FATAL: loading tls config (%s, %s) failed - %s", s.Opts.TLSCertFile, s.Opts.TLSKeyFile, err)
+		}
 	}
 
 	ln, err := net.Listen("tcp", addr)
