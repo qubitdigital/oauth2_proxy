@@ -525,9 +525,9 @@ func (p *OAuthProxy) GetRedirect(req *http.Request) (redirect string, err error)
 	if !p.SkipProviderButton {
 		redirect = req.Form.Get("rd")
 	} else {
-		redirect := req.URL.RequestURI()
+		redirect = req.URL.RequestURI()
 		if req.Header.Get("X-Auth-Request-Redirect") != "" {
-			redirectl = req.Header.Get("X-Auth-Request-Redirect")
+			redirect = req.Header.Get("X-Auth-Request-Redirect")
 		}
 	}
 	if redirect == "" || !strings.HasPrefix(redirect, "/") || strings.HasPrefix(redirect, "//") {
