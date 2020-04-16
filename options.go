@@ -3,8 +3,10 @@ package main
 import (
 	"crypto"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,14 +20,15 @@ import (
 
 // Configuration Options that can be set by Command Line Flag, or Config File
 type Options struct {
-	ProxyPrefix  string   `flag:"proxy-prefix" cfg:"proxy-prefix"`
-	HttpAddress  string   `flag:"http-address" cfg:"http_address"`
-	HttpsAddress string   `flag:"https-address" cfg:"https_address"`
-	RedirectURL  string   `flag:"redirect-url" cfg:"redirect_url"`
-	ClientID     string   `flag:"client-id" cfg:"client_id" env:"OAUTH2_PROXY_CLIENT_ID"`
-	ClientSecret string   `flag:"client-secret" cfg:"client_secret" env:"OAUTH2_PROXY_CLIENT_SECRET"`
-	TLSCertFile  []string `flag:"tls-cert" cfg:"tls_cert_file"`
-	TLSKeyFile   []string `flag:"tls-key" cfg:"tls_key_file"`
+	ProxyPrefix     string   `flag:"proxy-prefix" cfg:"proxy-prefix"`
+	HttpAddress     string   `flag:"http-address" cfg:"http_address"`
+	HttpsAddress    string   `flag:"https-address" cfg:"https_address"`
+	RedirectURL     string   `flag:"redirect-url" cfg:"redirect_url"`
+	ClientID        string   `flag:"client-id" cfg:"client_id" env:"OAUTH2_PROXY_CLIENT_ID"`
+	ClientSecret    string   `flag:"client-secret" cfg:"client_secret" env:"OAUTH2_PROXY_CLIENT_SECRET"`
+	TLSCertFile     []string `flag:"tls-cert" cfg:"tls_cert_file"`
+	TLSKeyFile      []string `flag:"tls-key" cfg:"tls_key_file"`
+	TLSClientCAFile string   `flag:"tls-client-ca" cfg:"tls_client_ca_file"`
 
 	AuthenticatedEmailsFile  string   `flag:"authenticated-emails-file" cfg:"authenticated_emails_file"`
 	AzureTenant              string   `flag:"azure-tenant" cfg:"azure_tenant"`
@@ -56,7 +59,8 @@ type Options struct {
 	PassHostHeader        bool     `flag:"pass-host-header" cfg:"pass_host_header"`
 	SkipProviderButton    bool     `flag:"skip-provider-button" cfg:"skip_provider_button"`
 	PassUserHeaders       bool     `flag:"pass-user-headers" cfg:"pass_user_headers"`
-	SSLInsecureSkipVerify bool     `flag:"ssl-insecure-skip-verify" cfg:"ssl_insecure_skip_verify"`
+	TLSCAFile             string   `flag:"tls-ca" cfg:"tls_ca_file"`
+	TLSInsecureSkipVerify bool     `flag:"tls-insecure-skip-verify" cfg:"tls_insecure_skip_verify"`
 	SetXAuthRequest       bool     `flag:"set-xauthrequest" cfg:"set_xauthrequest"`
 	SkipAuthPreflight     bool     `flag:"skip-auth-preflight" cfg:"skip_auth_preflight"`
 
@@ -82,6 +86,8 @@ type Options struct {
 	CompiledRegex []*regexp.Regexp
 	provider      providers.Provider
 	signatureData *SignatureData
+
+	tlsclientconfig *tls.Config
 }
 
 type SignatureData struct {
@@ -211,11 +217,26 @@ func (o *Options) Validate() error {
 	msgs = parseSignatureKey(o, msgs)
 	msgs = validateCookieName(o, msgs)
 
-	if o.SSLInsecureSkipVerify {
+	// The default client is used when talking out for token exchange
+	// we need to differentiate from the client used to talk to upstream
+	if o.TLSInsecureSkipVerify {
 		insecureTransport := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 		http.DefaultClient = &http.Client{Transport: insecureTransport}
+	}
+
+	if o.TLSCAFile != "" {
+		certs, err := ioutil.ReadFile(o.TLSCAFile)
+		if err != nil {
+			return err
+		}
+		certpool := x509.NewCertPool()
+		certpool.AppendCertsFromPEM(certs)
+
+		o.tlsclientconfig = &tls.Config{
+			RootCAs: certpool,
+		}
 	}
 
 	if len(msgs) != 0 {

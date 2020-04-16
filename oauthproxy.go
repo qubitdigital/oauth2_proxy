@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	b64 "encoding/base64"
 	"errors"
 	"fmt"
@@ -192,8 +193,13 @@ func (t traceTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return nt.RoundTrip(r)
 }
 
-func NewReverseProxy(target *url.URL) (proxy *httputil.ReverseProxy) {
+func NewReverseProxy(target *url.URL, tlsconfig *tls.Config) (proxy *httputil.ReverseProxy) {
 	rp := httputil.NewSingleHostReverseProxy(target)
+	if tlsconfig != nil {
+		rp.Transport = &http.Transport{
+			TLSClientConfig: tlsconfig,
+		}
+	}
 	rp.Transport = &traceTransport{rp.Transport}
 	return rp
 }
@@ -234,7 +240,7 @@ func NewOAuthProxy(opts *Options, validator func(string) bool) *OAuthProxy {
 		case "http", "https":
 			u.Path = ""
 			log.Printf("mapping path %q => upstream %q", path, u)
-			proxy := NewReverseProxy(u)
+			proxy := NewReverseProxy(u, opts.tlsclientconfig)
 			if !opts.PassHostHeader {
 				setProxyUpstreamHostHeader(proxy, u)
 			} else {
@@ -718,6 +724,10 @@ func (p *OAuthProxy) Proxy(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int {
+	if req.TLS != nil && len(req.TLS.PeerCertificates) > 0 {
+		return http.StatusAccepted
+	}
+
 	var saveSession, clearSession, revalidated bool
 	remoteAddr := getRemoteAddr(req)
 

@@ -2,6 +2,8 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -74,6 +76,19 @@ func (s *Server) ServeHTTPS() {
 			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
 		},
 		NextProtos: []string{"h2", "http/1.1"},
+	}
+
+	if s.Opts.TLSClientCAFile != "" {
+		certs, err := ioutil.ReadFile(s.Opts.TLSClientCAFile)
+		if err != nil {
+			log.Fatalf("FATAL: could not read CA certs, %v", err)
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(certs) {
+			log.Fatalf("FATAL: failed appending certs to pool")
+		}
+		config.ClientCAs = pool
+		config.ClientAuth = tls.VerifyClientCertIfGiven
 	}
 
 	if len(s.Opts.TLSCertFile) != len(s.Opts.TLSKeyFile) {
