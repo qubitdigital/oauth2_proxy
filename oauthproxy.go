@@ -789,6 +789,7 @@ func (p *OAuthProxy) Authenticate(rw http.ResponseWriter, req *http.Request) int
 		if err != nil {
 			log.Printf("%s %s", remoteAddr, err)
 		}
+		log.Printf("got auth header session, %#v", session, err)
 	}
 
 	if session == nil {
