@@ -13,13 +13,32 @@ import (
 	"github.com/mreiferson/go-options"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	jaegerlog "github.com/uber/jaeger-client-go/log"
 	"github.com/uber/jaeger-lib/metrics"
 )
 
 func main() {
-	jcfg := jaegercfg.Configuration{}
+	traceHost := "localhost"
+	tracePort := "6831"
+	if jhost := os.Getenv("JAEGER_AGENT_HOST"); jhost != "" {
+		traceHost = jhost
+	}
+	if jport := os.Getenv("JAEGER_AGENT_PORT"); jport != "" {
+		tracePort = jport
+	}
+	jcfg := jaegercfg.Configuration{
+		Sampler: &jaegercfg.SamplerConfig{
+			Type:  jaeger.SamplerTypeProbabilistic,
+			Param: 1.0 / 100.0,
+		},
+		Reporter: &jaegercfg.ReporterConfig{
+			LogSpans:           false,
+			LocalAgentHostPort: traceHost + ":" + tracePort,
+		},
+	}
+
 	jLogger := jaegerlog.StdLogger
 	jMetricsFactory := metrics.NullFactory
 	closer, err := jcfg.InitGlobalTracer(
