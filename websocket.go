@@ -29,7 +29,6 @@ var (
 )
 
 func (u *UpstreamProxy) handleWebsocket(w http.ResponseWriter, r *http.Request) {
-
 	// Copy request headers and remove websocket handshaking headers
 	// before submitting to the upstream server
 	upstreamHeader := http.Header{}
@@ -43,7 +42,7 @@ func (u *UpstreamProxy) handleWebsocket(w http.ResponseWriter, r *http.Request) 
 
 	// Connect upstream
 	upstreamAddr := u.upstreamWSURL(*r.URL).String()
-	upstream, upstreamResp, err := websocket.DefaultDialer.Dial(upstreamAddr, upstreamHeader)
+	upstream, upstreamResp, err := u.wsd.Dial(upstreamAddr, upstreamHeader)
 	if err != nil {
 		if upstreamResp != nil {
 			log.Printf("dialing upstream websocket failed with code %d: %v", upstreamResp.StatusCode, err)

@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,7 +14,6 @@ import (
 	"golang.org/x/oauth2/jws"
 
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
 )
 
 type BatonProvider struct {
@@ -59,7 +59,7 @@ func (p *BatonProvider) GetEmailAddress(s *SessionState) (string, error) {
 
 	keys, err := p.certCache.getKeys()
 	if err != nil {
-		return "", errors.Wrap(err, "could not fetch jws signing keys")
+		return "", fmt.Errorf("could not fetch jws signing keys, %w", err)
 	}
 
 	var verified bool
@@ -74,10 +74,10 @@ func (p *BatonProvider) GetEmailAddress(s *SessionState) (string, error) {
 	}
 	cs, err := jws.Decode("Bearer " + s.AccessToken)
 	if err != nil {
-		return "", errors.Wrap(err, "could not decode jws")
+		return "", fmt.Errorf("could not decode jws, %w", err)
 	}
 	if cs.Sub == "" {
-		return "", errors.Wrap(err, "JWT Sub was empty")
+		return "", fmt.Errorf("JWT Sub was empty")
 	}
 
 	return cs.Sub, nil
@@ -102,7 +102,7 @@ func (cc *certCache) getKeys() (map[string]*rsa.PublicKey, error) {
 
 	r, err := http.Get(cc.u.String())
 	if err != nil {
-		return nil, errors.Wrap(err, "can't fetch jws keys")
+		return nil, fmt.Errorf("can't fetch jws keys, %w", err)
 	}
 
 	if r.StatusCode != 200 {

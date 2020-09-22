@@ -18,6 +18,7 @@ import (
 	"github.com/18F/hmacauth"
 	"github.com/bitly/oauth2_proxy/cookie"
 	"github.com/bitly/oauth2_proxy/providers"
+	"github.com/gorilla/websocket"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -169,6 +170,7 @@ type UpstreamProxy struct {
 	upstream url.URL
 	handler  http.Handler
 	auth     hmacauth.HmacAuth
+	wsd      *websocket.Dialer
 }
 
 func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -246,15 +248,28 @@ func NewOAuthProxy(opts *Options, validator func(string) bool) *OAuthProxy {
 			} else {
 				setProxyDirector(proxy)
 			}
+
+			websocket.DefaultDialer.TLSClientConfig = opts.tlsclientconfig
+
 			serveMux.Handle(path,
-				&UpstreamProxy{*u, proxy, auth})
+				&UpstreamProxy{
+					upstream: *u,
+					handler:  proxy,
+					auth:     auth,
+					wsd:      websocket.DefaultDialer,
+				})
 		case "file":
 			if u.Fragment != "" {
 				path = u.Fragment
 			}
 			log.Printf("mapping path %q => file system %q", path, u.Path)
 			proxy := NewFileServer(path, u.Path)
-			serveMux.Handle(path, &UpstreamProxy{*u, proxy, nil})
+			serveMux.Handle(path, &UpstreamProxy{
+				upstream: *u,
+				handler:  proxy,
+				auth:     nil,
+				wsd:      websocket.DefaultDialer,
+			})
 		default:
 			panic(fmt.Sprintf("unknown upstream protocol %s", u.Scheme))
 		}
